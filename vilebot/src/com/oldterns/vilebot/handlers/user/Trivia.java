@@ -70,6 +70,7 @@ public class Trivia {
     		event.reply("No active game. Start a new one with !jeopardy");
     	}
     }
+    
     private boolean shouldStartGame(ReceivePrivmsg event) {
         String actualChannel = event.getChannel();
 
@@ -99,7 +100,7 @@ public class Trivia {
                     Thread.sleep(TIMEOUT);
                     timeoutTimer(event);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                	e.printStackTrace();
                 } catch (Exception e) {
 					e.printStackTrace();
 				}
