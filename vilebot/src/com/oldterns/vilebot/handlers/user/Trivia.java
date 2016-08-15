@@ -28,7 +28,9 @@ public class Trivia {
 
     private static final Pattern questionPattern = Pattern.compile( "^!jeopardy" );
     private static final Pattern answerPattern = Pattern.compile( "^!(whatis|whois) (.*)" );
+    private static final Pattern stopPattern = Pattern.compile("^!jeopardyStop");
     private static TriviaGame currentGame = null;
+    private static boolean jeopardySession = false;
     private static final String JEOPARDY_CHANNEL = Vilebot.getConfig().get("jeopardyChannel");
     private static final long TIMEOUT  = 30000L;
     public static final String RED = "\u000304";
@@ -42,6 +44,7 @@ public class Trivia {
         String text = event.getText();
         Matcher questionMatcher = questionPattern.matcher(text);
         Matcher answerMatcher = answerPattern.matcher(text);
+        Matcher stopMatcher = stopPattern.matcher(text);
 
         try {
             if (questionMatcher.matches() && shouldStartGame(event)) {
@@ -49,13 +52,24 @@ public class Trivia {
             } else if (answerMatcher.matches() && shouldStartGame(event)) {
                 String answer = answerMatcher.group(2);
                 finishGame(event, answer);
+            } else if (stopMatcher.matches() && shouldStartGame(event)) {
+            	terminateSession(event);
             }
         } catch(Exception e) {
             event.reply("I don't feel like playing.");
             e.printStackTrace();
         }
     }
-
+    
+    private void terminateSession(ReceivePrivmsg event) {
+    	if (jeopardySession == true) {
+	    	event.reply(currentGame.getAlreadyPlayingStringAfterTermination());
+	    	jeopardySession = false;
+    	}
+    	else {
+    		event.reply("No active game. Start a new one with !jeopardy");
+    	}
+    }
     private boolean shouldStartGame(ReceivePrivmsg event) {
         String actualChannel = event.getChannel();
 
@@ -86,15 +100,20 @@ public class Trivia {
                     timeoutTimer(event);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                }
+                } catch (Exception e) {
+					e.printStackTrace();
+				}
             }
         });
     }
 
-    private void timeoutTimer(ReceivePrivmsg event) {
+    private void timeoutTimer(ReceivePrivmsg event) throws Exception {
         String message = currentGame.getTimeoutString();
         event.reply(message);
         currentGame = null;
+        if (jeopardySession == true){
+        	startGame(event);
+        }
     }
 
     private void stopTimer() {
@@ -103,7 +122,7 @@ public class Trivia {
     }
 
 
-    private synchronized void finishGame(ReceivePrivmsg event, String answer) {
+    private synchronized void finishGame(ReceivePrivmsg event, String answer) throws Exception {
         String answerer = BaseNick.toBaseNick(event.getSender());
         if (currentGame != null) {
             if (currentGame.isCorrect(answer)) {
@@ -111,6 +130,9 @@ public class Trivia {
                 event.reply(String.format("Congrats %s, you win %d karma!", answerer, currentGame.getStakes()));
                 KarmaDB.modNounKarma(answerer, currentGame.getStakes());
                 currentGame = null;
+                if (jeopardySession == true) {
+                	startGame(event);
+                }
             }
             else {
                 event.reply(String.format("Sorry %s! That is incorrect, you lose %d karma.",
@@ -194,6 +216,10 @@ public class Trivia {
             return "A game is already in session!\n" + getQuestionBlurb();
         }
 
+        public String getAlreadyPlayingStringAfterTermination() {
+        	return "Thank you for playing Jeopardy. The last question is:\n" + getQuestionBlurb();
+        }
+        
         public String getTimeoutString() {
             return String.format("Your 30 seconds is up! The answer we were looking for was:\n%s",
                     BLUE + answer + RESET);
