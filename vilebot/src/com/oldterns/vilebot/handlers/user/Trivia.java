@@ -86,6 +86,9 @@ public class Trivia {
             event.reply(currentGame.getAlreadyPlayingString());
         }
         else {
+        	if (!jeopardySession) {
+        		jeopardySession = true;
+        	}
             currentGame = new TriviaGame();
             event.reply(currentGame.getIntroString());
             startTimer(event);
