@@ -6,7 +6,14 @@
  */
 package com.oldterns.vilebot.db;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import redis.clients.jedis.Jedis;
 
@@ -14,6 +21,7 @@ public class KarmaDB
     extends RedisDB
 {
     private static final String keyOfKarmaSortedSet = "noun-karma";
+    private static final String keyofKarmaAnalytics = "karmalytics";
 
     /**
      * Change the karma of a noun by an integer.
@@ -23,16 +31,38 @@ public class KarmaDB
      */
     public static void modNounKarma( String noun, int mod )
     {
+    	long transaction;
+        String member;
+        long currentTime = System.currentTimeMillis()/1000;
         Jedis jedis = pool.getResource();
+
         try
         {
             jedis.zincrby( keyOfKarmaSortedSet, mod, noun );
+            Set<String> members = jedis.zrange(keyofKarmaAnalytics, 0, -1);
+            transaction = getTransactionNum( members, jedis );
+            member = String.format(transaction+","+currentTime+","+noun+","+mod);
+            jedis.zincrby( keyofKarmaAnalytics, System.currentTimeMillis(), member );
         }
         finally
         {
             pool.returnResource( jedis );
         }
     }
+    
+    /**
+     * Get the list of all karma transaction of a timeframe.
+     * @param Date The date to search
+     * @return Arr[] 
+     */
+    public static void getKarmaTransactions( Date date ) 
+    {
+    	Jedis jedis = pool.getResource();
+    	//augment the date to something readable
+    	
+    	
+    }
+    
 
     /**
      * Get the karma of a noun.
@@ -255,6 +285,14 @@ public class KarmaDB
             sum += jedis.zscore(keyOfKarmaSortedSet, member);
         }
         return sum;
+    }
+    
+    private static long getTransactionNum(Set<String> members, Jedis jedis) {
+    	long result = 0;
+    	for (String member : members) {
+    		result++;
+    	}
+    	return result;
     }
 
 }

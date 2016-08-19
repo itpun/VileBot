@@ -40,7 +40,7 @@ public class Trivia {
     private static ExecutorService timer = Executors.newScheduledThreadPool(1);
 
     @Handler
-    public void doTrivia(ReceivePrivmsg event) {
+    public void doTrivia(ReceivePrivmsg event){
         String text = event.getText();
         Matcher questionMatcher = questionPattern.matcher(text);
         Matcher answerMatcher = answerPattern.matcher(text);
@@ -59,6 +59,15 @@ public class Trivia {
             event.reply("I don't feel like playing.");
             e.printStackTrace();
         }
+        
+//        while (jeopardySession == true && currentGame == null){
+//        	try {
+//				startGame(event);
+//			} catch (Exception e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//        }
     }
     
     private void terminateSession(ReceivePrivmsg event) {
@@ -86,11 +95,13 @@ public class Trivia {
             event.reply(currentGame.getAlreadyPlayingString());
         }
         else {
-        	if (!jeopardySession) {
-        		jeopardySession = true;
-        	}
             currentGame = new TriviaGame();
-            event.reply(currentGame.getIntroString());
+            if (!jeopardySession) {
+            	event.reply(currentGame.getIntroString());
+        		jeopardySession = true;
+            } else {
+            	event.reply(currentGame.getNextQuestionString());
+            }
             startTimer(event);
         }
     }
@@ -221,7 +232,11 @@ public class Trivia {
         }
 
         public String getAlreadyPlayingStringAfterTermination() {
-        	return "Thank you for playing Jeopardy. The last question is:\n" + getQuestionBlurb();
+        	return String.format("Thank you for playing Jeopardy.\n This is your last question.\n" + getQuestionBlurb());
+        }
+        
+        public String getNextQuestionString() {
+        	return String.format("\n%s Next Question %s\n %s \n30 seconds on the clock.", RED,RESET, getQuestionBlurb());
         }
         
         public String getTimeoutString() {
