@@ -22,6 +22,10 @@ public class KarmaDB
 {
     private static final String keyOfKarmaSortedSet = "noun-karma";
     private static final String keyofKarmaAnalytics = "karmalytics";
+    private static final int TRANSACTION_ID = 0;
+    private static final int CURRENT_TIME= 1;
+    private static final int NOUN = 2;
+    private static final int KARMA = 3;
 
     /**
      * Change the karma of a noun by an integer.
@@ -31,38 +35,18 @@ public class KarmaDB
      */
     public static void modNounKarma( String noun, int mod )
     {
-    	long transaction;
-        String member;
-        long currentTime = System.currentTimeMillis()/1000;
         Jedis jedis = pool.getResource();
 
         try
         {
             jedis.zincrby( keyOfKarmaSortedSet, mod, noun );
-            Set<String> members = jedis.zrange(keyofKarmaAnalytics, 0, -1);
-            transaction = getTransactionNum( members, jedis );
-            member = String.format(transaction+","+currentTime+","+noun+","+mod);
-            jedis.zincrby( keyofKarmaAnalytics, System.currentTimeMillis(), member );
+            karmalytics( jedis, mod, noun );
         }
         finally
         {
             pool.returnResource( jedis );
         }
     }
-    
-    /**
-     * Get the list of all karma transaction of a timeframe.
-     * @param Date The date to search
-     * @return Arr[] 
-     */
-    public static void getKarmaTransactions( Date date ) 
-    {
-    	Jedis jedis = pool.getResource();
-    	//augment the date to something readable
-    	
-    	
-    }
-    
 
     /**
      * Get the karma of a noun.
@@ -287,12 +271,44 @@ public class KarmaDB
         return sum;
     }
     
-    private static long getTransactionNum(Set<String> members, Jedis jedis) {
-    	long result = 0;
-    	for (String member : members) {
-    		result++;
+    private static String getTransactionNum(Jedis jedis) {
+        Set<String> latestTransaction = jedis.zrevrange(keyofKarmaAnalytics, 0, 0);
+    	String result = "0";
+    	if (latestTransaction != null) {
+	    	for (String entry : latestTransaction) {
+	    		String [] parser = entry.split(",");
+	    		result = parser[TRANSACTION_ID];
+	    	}
     	}
     	return result;
+    }
+    
+    private static void karmalytics(Jedis jedis, int mod, String noun) {
+    	Long transaction;
+        String member;
+        long currentTime = System.currentTimeMillis()/1000;
+        transaction = Long.parseLong(getTransactionNum( jedis ));
+        transaction++;
+        member = String.format(transaction+","+currentTime+","+noun+","+mod);
+        jedis.zincrby( keyofKarmaAnalytics, System.currentTimeMillis(), member );
+    }
+    
+    public static long getTotalTransactions() {
+        Jedis jedis = pool.getResource();
+        String transaction;
+        try
+        {
+            transaction = getTransactionNum(jedis); 
+        }
+        finally
+        {
+            pool.returnResource( jedis );
+        }
+        	return Long.parseLong(transaction);
+    }
+    
+    public static Set<String> getKarmaTransactionsRange(Jedis jedis, int maxTime, int minTime) {
+    	return jedis.zrevrangeByScore(keyofKarmaAnalytics, maxTime, minTime);
     }
 
 }
