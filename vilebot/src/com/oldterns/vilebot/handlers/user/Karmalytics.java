@@ -4,6 +4,8 @@ import ca.szc.keratin.bot.annotation.AssignedBot;
 import ca.szc.keratin.bot.annotation.HandlerContainer;
 import ca.szc.keratin.core.event.message.recieve.ReceivePrivmsg;
 import com.oldterns.vilebot.Vilebot;
+import com.oldterns.vilebot.db.KarmaDB;
+
 import net.engio.mbassy.listener.Handler;
 import twitter4j.JSONArray;
 import twitter4j.JSONException;
@@ -34,11 +36,14 @@ public class Karmalytics {
         if (karmalyticsMatcher.matches()) {
             String type = karmalyticsMatcher.group(1);
             switch(type) {
-            case todayPattern:
+            case todayPattern:   
+            	getTransactionsToday(event);
             	break;
             case weeklyPattern:
+            	event.reply(type);
             	break;
             case monthlyPattern:
+            	event.reply(type);
             	break;
             default:
             	event.reply("Invalid karmalytics parameter. Please refer to help.");
@@ -46,7 +51,34 @@ public class Karmalytics {
             }
         }
     }
-
+    
+    private void getTransactionsToday(ReceivePrivmsg event) {
+    	double timeStart = getCurrentMidnightDateMillis();
+    	double timeEnd = System.currentTimeMillis();
+    	event.reply("timestart="+timeStart+", timeEnd="+timeEnd);
+    	Set <String> transactions = KarmaDB.getKarmaTransactionsRange(timeEnd,timeStart);
+    	Iterator<String> iter =transactions.iterator();
+    	if (transactions.isEmpty()){
+    		event.reply("No transactions today.");
+    		return;
+    	}
+    	while (iter.hasNext()) {
+    		String [] transaction = iter.next().split(",");
+    		event.reply(iter.next());
+    	}
+    	return;
+    }
+    
+    static private double getCurrentMidnightDateMillis() {
+    	// http://stackoverflow.com/questions/6850874/how-to-create-a-java-date-object-of-midnight-today-and-midnight-tomorrow    
+    	Calendar date = new GregorianCalendar();
+    	// reset hour, minutes, seconds and millis
+    	date.set(Calendar.HOUR_OF_DAY, 0);
+    	date.set(Calendar.MINUTE, 0);
+    	date.set(Calendar.SECOND, 0);
+    	date.set(Calendar.MILLISECOND, 0);
+    	return date.getTimeInMillis();
+    }
 
     @AssignedBot
     private KeratinBot bot;

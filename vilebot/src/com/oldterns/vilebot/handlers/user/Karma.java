@@ -54,6 +54,8 @@ public class Karma
     private static final Pattern removePattern = Pattern.compile( "!admin unrank (" + nounPattern + ")\\s*" );
 
     private static final Pattern totalPattern = Pattern.compile( "^!total" );
+    
+    private static final Pattern transactionPattern = Pattern.compile("^!transactions");
 
     @AssignedBot
     private KeratinBot bot;
@@ -283,6 +285,15 @@ public class Karma
         }
     }
 
+    @Handler
+    private void replyTotalTransactions( ReceivePrivmsg event ) {
+    	Matcher matcher = transactionPattern.matcher(event.getText());
+    	
+    	if (matcher.matches()) {
+    		event.reply("there are " + KarmaDB.getTotalTransactions() + " transactions logged.");
+    	}
+    }
+    
     private static boolean replyWithRankAndKarma( String noun, Replyable event )
     {
         return replyWithRankAndKarma( noun, event, false );

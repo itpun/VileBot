@@ -307,8 +307,18 @@ public class KarmaDB
         	return Long.parseLong(transaction);
     }
     
-    public static Set<String> getKarmaTransactionsRange(Jedis jedis, int maxTime, int minTime) {
-    	return jedis.zrevrangeByScore(keyofKarmaAnalytics, maxTime, minTime);
+    public static Set<String> getKarmaTransactionsRange(double maxTime, double minTime) {
+        Jedis jedis = pool.getResource();
+        Set<String> members;
+        try
+        {
+             members = jedis.zrevrangeByScore(keyofKarmaAnalytics, maxTime, minTime);
+        }
+        finally
+        {
+            pool.returnResource( jedis );
+        }
+    	return members;
     }
 
 }
